@@ -3,7 +3,6 @@ package controllers
 import (
 	"database/sql"
 	"github.com/labstack/echo/v4"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -15,8 +14,8 @@ func GetUser(c echo.Context) error {
 	// melakukan query untuk mengambil data dari tabel 'users' dalam database
 	rows, err := db.Query("SELECT id, name, age, address, type FROM users")
 	if err != nil {
-		// jika terjadi error saat melakukan query, kembalikan response dengan status code 500 dan pesan error
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		// jika terjadi error saat melakukan query, kembalikan response dengan error bawaan Echo
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error querying users: "+err.Error())
 	}
 	defer rows.Close()
 
@@ -29,8 +28,8 @@ func GetUser(c echo.Context) error {
 
 		// mengisi data pengguna dari setiap kolom dalam baris saat ini
 		if err := rows.Scan(&user.ID, &user.Name, &user.Age, &user.Address, &user.Type); err != nil {
-			// jika terjadi error saat memindai kolom dalam baris saat ini, kembalikan response dengan status code 500 dan pesan error
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			// jika terjadi error saat memindai kolom dalam baris saat ini, kembalikan response dengan error bawaan Echo
+			return echo.NewHTTPError(http.StatusInternalServerError, "Error scanning user row: "+err.Error())
 		}
 
 		// menambahkan pengguna saat ini ke dalam slice users
@@ -48,10 +47,18 @@ func InsertUser(c echo.Context) error {
 	// Mendapatkan data input dari request form.
 	name := c.FormValue("name")
 	ageStr := c.FormValue("age")
-	age, _ := strconv.Atoi(ageStr)
+	age, err := strconv.Atoi(ageStr)
+	if err != nil {
+		// jika input data usia tidak valid, kembalikan response dengan status code 400 dan pesan error
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid age"})
+	}
 	address := c.FormValue("address")
 	typeStr := c.FormValue("type")
-	userType, _ := strconv.Atoi(typeStr)
+	userType, err := strconv.Atoi(typeStr)
+	if err != nil {
+		// jika input data tipe pengguna tidak valid, kembalikan response dengan status code 400 dan pesan error
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user type"})
+	}
 
 	// Validasi input data, jika ada input data yang tidak valid maka kembalikan error.
 	if name == "" || age <= 0 || address == "" || userType <= 0 {
@@ -63,20 +70,23 @@ func InsertUser(c echo.Context) error {
 	// Mempersiapkan statement untuk memasukkan data user ke dalam database.
 	stmt, err := db.Prepare("INSERT INTO users(name, age, address, type) VALUES (?, ?, ?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		// jika terjadi error saat mempersiapkan statement, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	defer stmt.Close()
 
 	// Menjalankan statement untuk memasukkan data user ke dalam database.
 	result, err := stmt.Exec(name, age, address, userType)
 	if err != nil {
-		log.Fatal(err)
+		// jika terjadi error saat menjalankan statement, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	// Mendapatkan ID user yang baru saja dimasukkan ke dalam database.
 	id, err := result.LastInsertId()
 	if err != nil {
-		log.Fatal(err)
+		// jika terjadi error saat mendapatkan ID user yang baru saja dimasukkan, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	// Membuat object User baru dengan data yang sudah dimasukkan ke dalam database.
@@ -113,9 +123,21 @@ func UpdateUser(c echo.Context) error {
 	}
 
 	// Menjalankan statement untuk mengupdate data user ke dalam database berdasarkan ID.
-	_, err := db.Exec("UPDATE users SET name=?, age=?, address=?, type=? WHERE id=?", name, age, address, userType, id)
+	result, err := db.Exec("UPDATE users SET name=?, age=?, address=?, type=? WHERE id=?", name, age, address, userType, id)
 	if err != nil {
-		log.Fatal(err)
+		// jika terjadi error saat menjalankan query, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	// memeriksa apakah data pengguna yang ingin diupdate ada di dalam database
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		// jika terjadi error saat memeriksa apakah data pengguna yang ingin diupdate ada di dalam database, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if rowsAffected == 0 {
+		// jika data pengguna yang ingin diupdate tidak ditemukan di dalam database, kembalikan response dengan status code 404 dan pesan error
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 
 	// Mengembalikan response dengan status 200 OK dan pesan sukses.
@@ -132,13 +154,32 @@ func DeleteUser(c echo.Context) error {
 	userID := c.Param("id")
 
 	// Menghapus user dari database
-	_, err := db.Exec("DELETE FROM users WHERE id = ?", userID)
+	result, err := db.Exec("DELETE FROM users WHERE id = ?", userID)
 	if err != nil {
-		log.Fatal(err)
+		// Jika terjadi error saat menghapus user, kembalikan response dengan status code 500 dan pesan error
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"message": "Failed to delete user",
+			"error":   err.Error(),
 		})
 	}
+
+	// Mendapatkan jumlah baris yang terkena penghapusan
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		// Jika terjadi error saat mendapatkan jumlah baris yang terkena penghapusan, kembalikan response dengan status code 500 dan pesan error
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"message": "Failed to delete user",
+			"error":   err.Error(),
+		})
+	}
+
+	if rowsAffected == 0 {
+		// Jika tidak ada baris yang terkena penghapusan, kembalikan response dengan status code 404 dan pesan user tidak ditemukan
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"message": "User not found",
+		})
+	}
+
 	// Mengembalikan pesan JSON berhasil jika penghapusan berhasil
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "User deleted successfully",
