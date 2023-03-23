@@ -1,30 +1,14 @@
-name: Unit Testing
-
+name: Test
 on:
-  push:
-    branches:
-      - master
   pull_request:
-    branches:
-      - master
+    branches: [ master ]
+  push:
+    branches: [ master ]
 
 jobs:
   test:
-    name: Test
-
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '1.19.5'
-
-      - name: Get dependencies
-        run: go mod download
-
-      - name: Run tests
-        run: go test -v ./...
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+      - uses: n8maninger/action-golang-test@v1

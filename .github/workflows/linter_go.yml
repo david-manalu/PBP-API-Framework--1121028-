@@ -1,34 +1,34 @@
-name: Linter Go
+name: Linter Go # Nama dari GitHub Action ini
 
-on:
+on: # Konfigurasi untuk trigger GitHub Action ketika ada push ke branch master
   push:
     branches:
       - master
 
-jobs:
+jobs: # Konfigurasi untuk job yang akan dijalankan oleh GitHub Action
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Konfigurasi untuk jenis OS yang digunakan
 
-    steps:
-      - name: Checkout code
+    steps: # Konfigurasi langkah-langkah yang akan dijalankan oleh job
+      - name: Checkout code # Checkout kode dari repo
         uses: actions/checkout@v2
 
-      - name: Set up Go
+      - name: Set up Go # Konfigurasi Go yang digunakan
         uses: actions/setup-go@v2
         with:
-          go-version: '1.19.5'
+          go-version: '1.19.5' # Versi Go yang digunakan
 
-      - name: Install Linter Module
+      - name: Install Linter Module # Menginstal module linter
         run: go get golang.org/x/lint/golint
 
-      - name: Install Linter
+      - name: Install Linter # Menginstal linter
         run: go install golang.org/x/lint/golint
 
-      - name: Run Linter
+      - name: Run Linter # Menjalankan linter
         run: golint ./...
 
-      - name: Upload Linter Results
+      - name: Upload Linter Results # Mengupload hasil linting
         uses: actions/upload-artifact@v2
         with:
-          name: Lint Results
-          path: lint-results.txt
+          name: Lint Results # Nama hasil upload
+          path: lint-results.txt # Path hasil linting yang diupload
