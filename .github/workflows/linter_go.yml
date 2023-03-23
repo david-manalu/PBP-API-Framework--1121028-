@@ -26,9 +26,3 @@ jobs: # Konfigurasi untuk job yang akan dijalankan oleh GitHub Action
 
       - name: Run Linter # Menjalankan linter
         run: golint ./...
-
-      - name: Upload Linter Results # Mengupload hasil linting
-        uses: actions/upload-artifact@v2
-        with:
-          name: Lint Results # Nama hasil upload
-          path: lint-results.txt # Path hasil linting yang diupload
