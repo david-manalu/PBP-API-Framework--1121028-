@@ -9,6 +9,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-      - uses: n8maninger/action-golang-test@v1
+      - name: Checkout code # Checkout kode dari repo
+        uses: actions/checkout@v3
+
+      - name: Set up Go # Konfigurasi Go yang digunakan
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.19.5' # Versi Go yang digunakan
+
+      - name: Testing Go
+        uses: n8maninger/action-golang-test@v1
